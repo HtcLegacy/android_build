@@ -62,13 +62,14 @@ $(combo_2nd_arch_prefix)TARGET_LIBGCC := \
 	$(shell $($(combo_2nd_arch_prefix)TARGET_CC) -m32 -print-file-name=libgcc.a)
 $(combo_2nd_arch_prefix)TARGET_LIBATOMIC := \
 	$(shell $($(combo_2nd_arch_prefix)TARGET_CC) -m32 -print-file-name=libatomic.a)
+$(combo_2nd_arch_prefix)TARGET_LIBGCOV := \
+	$(shell $($(combo_2nd_arch_prefix)TARGET_CC) -m32 -print-file-name=libgcov.a)
 endif
 
 $(combo_2nd_arch_prefix)TARGET_NO_UNDEFINED_LDFLAGS := -Wl,--no-undefined
 
 libc_root := bionic/libc
 libm_root := bionic/libm
-libstdc++_root := bionic/libstdc++
 
 KERNEL_HEADERS_COMMON := $(libc_root)/kernel/uapi
 KERNEL_HEADERS_ARCH   := $(libc_root)/kernel/uapi/asm-x86 # x86 covers both x86 and x86_64.
@@ -121,14 +122,15 @@ $(combo_2nd_arch_prefix)TARGET_GLOBAL_LDFLAGS += -m32
 
 $(combo_2nd_arch_prefix)TARGET_GLOBAL_LDFLAGS += -Wl,-z,noexecstack
 $(combo_2nd_arch_prefix)TARGET_GLOBAL_LDFLAGS += -Wl,-z,relro -Wl,-z,now
+$(combo_2nd_arch_prefix)TARGET_GLOBAL_LDFLAGS += -Wl,--build-id=md5
 $(combo_2nd_arch_prefix)TARGET_GLOBAL_LDFLAGS += -Wl,--warn-shared-textrel
 $(combo_2nd_arch_prefix)TARGET_GLOBAL_LDFLAGS += -Wl,--fatal-warnings
 $(combo_2nd_arch_prefix)TARGET_GLOBAL_LDFLAGS += -Wl,--gc-sections
+$(combo_2nd_arch_prefix)TARGET_GLOBAL_LDFLAGS += -Wl,--hash-style=gnu
 
 $(combo_2nd_arch_prefix)TARGET_C_INCLUDES := \
 	$(libc_root)/arch-x86/include \
 	$(libc_root)/include \
-	$(libstdc++_root)/include \
 	$(KERNEL_HEADERS) \
 	$(libm_root)/include \
 	$(libm_root)/include/i387 \
@@ -142,6 +144,11 @@ $(combo_2nd_arch_prefix)TARGET_CRTEND_SO_O := $($(combo_2nd_arch_prefix)TARGET_O
 
 $(combo_2nd_arch_prefix)TARGET_STRIP_MODULE:=true
 
+<<<<<<< HEAD
+$(combo_2nd_arch_prefix)TARGET_DEFAULT_SYSTEM_SHARED_LIBRARIES := libc libm
+
+$(combo_2nd_arch_prefix)TARGET_LINKER := /system/bin/linker
+=======
 $(combo_2nd_arch_prefix)TARGET_DEFAULT_SYSTEM_SHARED_LIBRARIES := libc libstdc++ libm
 
 $(combo_2nd_arch_prefix)TARGET_CUSTOM_LD_COMMAND := true
@@ -214,3 +221,4 @@ $(hide) $(PRIVATE_CXX) \
 	-Wl,--end-group \
 	$(if $(filter true,$(PRIVATE_NO_CRT)),,$(PRIVATE_TARGET_CRTEND_O))
 endef
+>>>>>>> cm-12.0

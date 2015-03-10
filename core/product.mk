@@ -88,7 +88,6 @@ _product_var_list := \
     PRODUCT_EXTRA_RECOVERY_KEYS \
     PRODUCT_PACKAGE_OVERLAYS \
     DEVICE_PACKAGE_OVERLAYS \
-    PRODUCT_TAGS \
     PRODUCT_SDK_ATREE_FILES \
     PRODUCT_SDK_ADDON_NAME \
     PRODUCT_SDK_ADDON_COPY_FILES \
@@ -99,18 +98,18 @@ _product_var_list := \
     PRODUCT_DEFAULT_DEV_CERTIFICATE \
     PRODUCT_RESTRICT_VENDOR_FILES \
     PRODUCT_VENDOR_KERNEL_HEADERS \
-    PRODUCT_FACTORY_RAMDISK_MODULES \
-    PRODUCT_FACTORY_BUNDLE_MODULES \
-    PRODUCT_RUNTIMES \
     PRODUCT_BOOT_JARS \
-    PRODUCT_DEX_PREOPT_IMAGE_IN_DATA \
     PRODUCT_SUPPORTS_VERITY \
     PRODUCT_OEM_PROPERTIES \
     PRODUCT_SYSTEM_PROPERTY_BLACKLIST \
     PRODUCT_SYSTEM_SERVER_JARS \
     PRODUCT_VERITY_SIGNING_KEY \
     PRODUCT_SYSTEM_VERITY_PARTITION \
-    PRODUCT_VENDOR_VERITY_PARTITION
+    PRODUCT_VENDOR_VERITY_PARTITION \
+    PRODUCT_DEX_PREOPT_MODULE_CONFIGS \
+    PRODUCT_DEX_PREOPT_DEFAULT_FLAGS \
+    PRODUCT_DEX_PREOPT_BOOT_FLAGS \
+
 
 define dump-product
 $(info ==== $(1) ====)\
@@ -290,7 +289,6 @@ _product_stash_var_list := $(_product_var_list) \
 	TARGET_PROVIDES_INIT_RC \
 	TARGET_CPU_ABI \
 	TARGET_CPU_ABI2 \
-	TARGET_CPU_SMP \
 
 
 _product_stash_var_list += \
@@ -305,6 +303,7 @@ _product_stash_var_list += \
 	BOARD_BOOTIMAGE_PARTITION_SIZE \
 	BOARD_RECOVERYIMAGE_PARTITION_SIZE \
 	BOARD_SYSTEMIMAGE_PARTITION_SIZE \
+	BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE \
 	BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE \
 	BOARD_USERDATAIMAGE_PARTITION_SIZE \
 	BOARD_CACHEIMAGE_FILE_SYSTEM_TYPE \
@@ -319,6 +318,10 @@ _product_stash_var_list += \
 	DEFAULT_SYSTEM_DEV_CERTIFICATE \
 	WITH_DEXPREOPT \
 	WITH_DEXPREOPT_BOOT_IMG_ONLY
+
+_product_stash_var_list += \
+	GLOBAL_CFLAGS_NO_OVERRIDE \
+	GLOBAL_CPPFLAGS_NO_OVERRIDE \
 
 #
 # Stash values of the variables in _product_stash_var_list.
@@ -350,4 +353,15 @@ endef
 
 define add-to-product-copy-files-if-exists
 $(if $(wildcard $(word 1,$(subst :, ,$(1)))),$(1))
+endef
+
+# whitespace placeholder when we record module's dex-preopt config.
+_PDPMC_SP_PLACE_HOLDER := |@SP@|
+# Set up dex-preopt config for a module.
+# $(1) list of module names
+# $(2) the modules' dex-preopt config
+define add-product-dex-preopt-module-config
+$(eval _c := $(subst $(space),$(_PDPMC_SP_PLACE_HOLDER),$(strip $(2))))\
+$(eval PRODUCT_DEX_PREOPT_MODULE_CONFIGS += \
+  $(foreach m,$(1),$(m)=$(_c)))
 endef

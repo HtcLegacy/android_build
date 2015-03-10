@@ -218,7 +218,12 @@ LOCAL_AIDL_INCLUDES += $(FRAMEWORKS_BASE_JAVA_SRC_DIRS)
 endif # LOCAL_SDK_VERSION
 $(aidl_java_sources): PRIVATE_AIDL_FLAGS := -b $(addprefix -p,$(aidl_preprocess_import)) -I$(LOCAL_PATH) -I$(LOCAL_PATH)/src $(addprefix -I,$(LOCAL_AIDL_INCLUDES))
 
-$(aidl_java_sources): $(intermediates.COMMON)/src/%.java: $(TOPDIR)$(LOCAL_PATH)/%.aidl $(LOCAL_ADDITIONAL_DEPENDENCIES) $(AIDL) $(aidl_preprocess_import)
+$(aidl_java_sources): $(intermediates.COMMON)/src/%.java: \
+        $(TOPDIR)$(LOCAL_PATH)/%.aidl \
+        $(LOCAL_MODULE_MAKEFILE) \
+        $(LOCAL_ADDITIONAL_DEPENDENCIES) \
+        $(AIDL) \
+        $(aidl_preprocess_import)
 	$(transform-aidl-to-java)
 -include $(aidl_java_sources:%.java=%.P)
 
@@ -562,27 +567,27 @@ endif # !LOCAL_UNINSTALLABLE_MODULE
 ###########################################################
 ## CHECK_BUILD goals
 ###########################################################
-
-ifdef java_alternative_checked_module
-  LOCAL_CHECKED_MODULE := $(java_alternative_checked_module)
-endif
-
+my_checked_module :=
 # If nobody has defined a more specific module for the
 # checked modules, use LOCAL_BUILT_MODULE.
-ifndef LOCAL_CHECKED_MODULE
-  LOCAL_CHECKED_MODULE := $(LOCAL_BUILT_MODULE)
+ifdef LOCAL_CHECKED_MODULE
+  my_checked_module := $(LOCAL_CHECKED_MODULE)
+else ifdef java_alternative_checked_module
+  my_checked_module := $(java_alternative_checked_module)
+else
+  my_checked_module := $(LOCAL_BUILT_MODULE)
 endif
 
 # If they request that this module not be checked, then don't.
 # PLEASE DON'T SET THIS.  ANY PLACES THAT SET THIS WITHOUT
 # GOOD REASON WILL HAVE IT REMOVED.
 ifdef LOCAL_DONT_CHECK_MODULE
-  LOCAL_CHECKED_MODULE :=
+  my_checked_module :=
 endif
 # Don't check build target module defined for the 2nd arch
 ifndef LOCAL_IS_HOST_MODULE
 ifdef LOCAL_2ND_ARCH_VAR_PREFIX
-  LOCAL_CHECKED_MODULE :=
+  my_checked_module :=
 endif
 endif
 
@@ -601,7 +606,7 @@ ALL_MODULES.$(my_register_name).PATH := \
 ALL_MODULES.$(my_register_name).TAGS := \
     $(ALL_MODULES.$(my_register_name).TAGS) $(my_module_tags)
 ALL_MODULES.$(my_register_name).CHECKED := \
-    $(ALL_MODULES.$(my_register_name).CHECKED) $(LOCAL_CHECKED_MODULE)
+    $(ALL_MODULES.$(my_register_name).CHECKED) $(my_checked_module)
 ALL_MODULES.$(my_register_name).BUILT := \
     $(ALL_MODULES.$(my_register_name).BUILT) $(LOCAL_BUILT_MODULE)
 ifneq (true,$(LOCAL_UNINSTALLABLE_MODULE))
@@ -645,14 +650,6 @@ INSTALLABLE_FILES.$(LOCAL_INSTALLED_MODULE).MODULE := $(my_register_name)
 # Keep track of all the tags we've seen.
 ALL_MODULE_TAGS := $(sort $(ALL_MODULE_TAGS) $(my_module_tags))
 
-# Add this module to the tag list of each specified tag.
-# Don't use "+=". If the variable hasn't been set with ":=",
-# it will default to recursive expansion.
-$(foreach tag,$(my_module_tags),\
-    $(eval ALL_MODULE_TAGS.$(tag) := \
-        $(ALL_MODULE_TAGS.$(tag)) \
-        $(LOCAL_INSTALLED_MODULE)))
-
 # Add this module name to the tag list of each specified tag.
 $(foreach tag,$(my_module_tags),\
     $(eval ALL_MODULE_NAME_TAGS.$(tag) += $(my_register_name)))
@@ -675,9 +672,9 @@ h_or_t := target
 endif
 
 ifdef j_or_n
-$(j_or_n) $(h_or_t) $(j_or_n)-$(h_or_t) : $(LOCAL_CHECKED_MODULE)
+$(j_or_n) $(h_or_t) $(j_or_n)-$(h_or_t) : $(my_checked_module)
 ifneq (,$(filter $(my_module_tags),tests))
-$(j_or_n)-$(h_or_t)-tests $(j_or_n)-tests $(h_or_t)-tests : $(LOCAL_CHECKED_MODULE)
+$(j_or_n)-$(h_or_t)-tests $(j_or_n)-tests $(h_or_t)-tests : $(my_checked_module)
 endif
 endif
 

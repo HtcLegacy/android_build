@@ -33,22 +33,6 @@ $(combo_var_prefix)CXX := $(CXX)
 $(combo_var_prefix)AR := $(AR)
 $(combo_var_prefix)STRIP := $(STRIP)
 
-$(combo_var_prefix)BINDER_MINI := 0
-
-$(combo_var_prefix)HAVE_EXCEPTIONS := 0
-$(combo_var_prefix)HAVE_UNIX_FILE_PATH := 1
-$(combo_var_prefix)HAVE_WINDOWS_FILE_PATH := 0
-$(combo_var_prefix)HAVE_RTTI := 1
-$(combo_var_prefix)HAVE_CALL_STACKS := 1
-$(combo_var_prefix)HAVE_64BIT_IO := 1
-$(combo_var_prefix)HAVE_CLOCK_TIMERS := 1
-$(combo_var_prefix)HAVE_PTHREAD_RWLOCK := 1
-$(combo_var_prefix)HAVE_STRNLEN := 1
-$(combo_var_prefix)HAVE_STRERROR_R_STRRET := 1
-$(combo_var_prefix)HAVE_STRLCPY := 0
-$(combo_var_prefix)HAVE_STRLCAT := 0
-$(combo_var_prefix)HAVE_KERNEL_MODULES := 0
-
 $(combo_var_prefix)GLOBAL_CFLAGS := -fno-exceptions -Wno-multichar
 $(combo_var_prefix)RELEASE_CFLAGS := -O2 -g -fno-strict-aliasing
 $(combo_var_prefix)GLOBAL_CPPFLAGS :=
@@ -107,6 +91,11 @@ ifneq ($(USE_CCACHE),)
     ccache =
   endif
 endif
+
+# Stash the original values of CC and CXX so we can still use the non-wrapped
+# values later.
+$(combo_2nd_arch_prefix)CC_BARE := $($(combo_var_prefix)CC)
+$(combo_2nd_arch_prefix)CXX_BARE := $($(combo_var_prefix)CXX)
 
 # The C/C++ compiler can be wrapped by setting the CC/CXX_WRAPPER vars.
 ifdef CC_WRAPPER

@@ -91,6 +91,7 @@ TARGET_GLOBAL_CFLAGS += \
 TARGET_GLOBAL_CFLAGS += \
     -Werror=pointer-to-int-cast \
     -Werror=int-to-pointer-cast \
+    -Werror=implicit-function-declaration \
 
 TARGET_GLOBAL_CFLAGS += -fno-strict-volatile-bitfields
 
@@ -108,10 +109,15 @@ TARGET_GLOBAL_LDFLAGS += \
 			-Wl,-z,noexecstack \
 			-Wl,-z,relro \
 			-Wl,-z,now \
+			-Wl,--build-id=md5 \
 			-Wl,--warn-shared-textrel \
 			-Wl,--fatal-warnings \
 			-Wl,-maarch64linux \
+			-Wl,--hash-style=gnu \
 			$(arch_variant_ldflags)
+
+# Disable transitive dependency library symbol resolving.
+TARGET_GLOBAL_LDFLAGS += -Wl,--allow-shlib-undefined
 
 TARGET_GLOBAL_CPPFLAGS += -fvisibility-inlines-hidden
 
@@ -126,12 +132,13 @@ TARGET_RELEASE_CFLAGS := \
 
 libc_root := bionic/libc
 libm_root := bionic/libm
-libstdc++_root := bionic/libstdc++
 
 TARGET_LIBGCC := $(shell $(TARGET_CC) $(TARGET_GLOBAL_CFLAGS) \
 	-print-libgcc-file-name)
 TARGET_LIBATOMIC := $(shell $(TARGET_CC) $(TARGET_GLOBAL_CFLAGS) \
 	-print-file-name=libatomic.a)
+TARGET_LIBGCOV := $(shell $(TARGET_CC) $(TARGET_GLOBAL_CFLAGS) \
+	-print-file-name=libgcov.a)
 
 KERNEL_HEADERS_COMMON := $(libc_root)/kernel/uapi
 KERNEL_HEADERS_ARCH   := $(libc_root)/kernel/uapi/asm-$(TARGET_ARCH)
@@ -140,7 +147,6 @@ KERNEL_HEADERS := $(KERNEL_HEADERS_COMMON) $(KERNEL_HEADERS_ARCH)
 TARGET_C_INCLUDES := \
 	$(libc_root)/arch-arm64/include \
 	$(libc_root)/include \
-	$(libstdc++_root)/include \
 	$(KERNEL_HEADERS) \
 	$(libm_root)/include \
 	$(libm_root)/include/arm64 \
@@ -154,6 +160,11 @@ TARGET_CRTEND_SO_O := $(TARGET_OUT_INTERMEDIATE_LIBRARIES)/crtend_so.o
 
 TARGET_STRIP_MODULE:=true
 
+<<<<<<< HEAD
+TARGET_DEFAULT_SYSTEM_SHARED_LIBRARIES := libc libm
+
+TARGET_LINKER := /system/bin/linker64
+=======
 TARGET_DEFAULT_SYSTEM_SHARED_LIBRARIES := libc libstdc++ libm
 
 TARGET_CUSTOM_LD_COMMAND := true
@@ -231,3 +242,4 @@ $(hide) $(PRIVATE_CXX) -nostdlib -Bstatic \
 	-Wl,--end-group \
 	$(if $(filter true,$(PRIVATE_NO_CRT)),,$(PRIVATE_TARGET_CRTEND_O))
 endef
+>>>>>>> cm-12.0

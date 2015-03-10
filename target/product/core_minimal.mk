@@ -52,6 +52,7 @@ PRODUCT_PACKAGES += \
     iptables \
     keystore \
     keystore.default \
+    ld.mc \
     libbcc \
     libOpenMAXAL \
     libOpenSLES \
@@ -102,11 +103,10 @@ PRODUCT_SYSTEM_SERVER_JARS := \
     ethernet-service \
     wifi-service
 
-PRODUCT_RUNTIMES := runtime_libart_default
-
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
     ro.zygote=zygote32
 PRODUCT_COPY_FILES += \
     system/core/rootdir/init.zygote32.rc:root/init.zygote32.rc
 
+$(call inherit-product, $(SRC_TARGET_DIR)/product/runtime_libart.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/base.mk)

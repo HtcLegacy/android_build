@@ -33,10 +33,10 @@ include $(BUILD_COMBOS)/mac_version.mk
 
 HOST_TOOLCHAIN_ROOT := prebuilts/gcc/darwin-x86/host/i686-apple-darwin-4.2.1
 HOST_TOOLCHAIN_PREFIX := $(HOST_TOOLCHAIN_ROOT)/bin/i686-apple-darwin$(gcc_darwin_version)
-# Don't do anything if the toolchain is not there
-ifneq (,$(strip $(wildcard $(HOST_TOOLCHAIN_PREFIX)-gcc)))
 HOST_CC  := $(HOST_TOOLCHAIN_PREFIX)-gcc
 HOST_CXX := $(HOST_TOOLCHAIN_PREFIX)-g++
+<<<<<<< HEAD
+=======
 
 ifeq ($(mac_sdk_version), $(filter $(mac_sdk_version), 10.8 10.9 10.10))
 # Mac SDK 10.8 and later does not have stdarg.h, etc
@@ -49,6 +49,7 @@ else
 HOST_CC := gcc
 HOST_CXX := g++
 endif # $(HOST_TOOLCHAIN_PREFIX)-gcc exists
+>>>>>>> cm-12.0
 
 # gcc location for clang; to be updated when clang is updated
 # HOST_TOOLCHAIN_ROOT is a Darwin-specific define
@@ -57,6 +58,7 @@ HOST_TOOLCHAIN_FOR_CLANG := $(HOST_TOOLCHAIN_ROOT)
 HOST_AR := $(AR)
 
 HOST_GLOBAL_CFLAGS += -isysroot $(mac_sdk_root) -mmacosx-version-min=$(mac_sdk_version) -DMACOSX_DEPLOYMENT_TARGET=$(mac_sdk_version)
+HOST_GLOBAL_CPPFLAGS += -isystem $(mac_sdk_path)/Toolchains/XcodeDefault.xctoolchain/usr/include/c++/v1
 HOST_GLOBAL_LDFLAGS += -isysroot $(mac_sdk_root) -Wl,-syslibroot,$(mac_sdk_root) -mmacosx-version-min=$(mac_sdk_version)
 
 HOST_GLOBAL_CFLAGS += -fPIC -funwind-tables

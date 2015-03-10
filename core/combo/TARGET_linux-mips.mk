@@ -35,7 +35,7 @@ TARGET_$(combo_2nd_arch_prefix)ARCH_VARIANT := mips32r2-fp
 endif
 
 # Decouple NDK library selection with platform compiler version
-$(combo_2nd_arch_prefix)TARGET_NDK_GCC_VERSION := 4.8
+$(combo_2nd_arch_prefix)TARGET_NDK_GCC_VERSION := 4.9
 
 ifeq ($(strip $(TARGET_GCC_VERSION_EXP)),)
 $(combo_2nd_arch_prefix)TARGET_GCC_VERSION := 4.9
@@ -104,9 +104,13 @@ $(combo_2nd_arch_prefix)TARGET_GLOBAL_LDFLAGS += \
 			-Wl,-z,noexecstack \
 			-Wl,-z,relro \
 			-Wl,-z,now \
+			-Wl,--build-id=md5 \
 			-Wl,--warn-shared-textrel \
 			-Wl,--fatal-warnings \
 			$(arch_variant_ldflags)
+
+# Disable transitive dependency library symbol resolving.
+$(combo_2nd_arch_prefix)TARGET_GLOBAL_LDFLAGS += -Wl,--allow-shlib-undefined
 
 $(combo_2nd_arch_prefix)TARGET_GLOBAL_CPPFLAGS += -fvisibility-inlines-hidden
 
@@ -121,7 +125,6 @@ $(combo_2nd_arch_prefix)TARGET_RELEASE_CFLAGS := \
 
 libc_root := bionic/libc
 libm_root := bionic/libm
-libstdc++_root := bionic/libstdc++
 
 
 ## on some hosts, the target cross-compiler is not available so do not run this command
@@ -137,6 +140,8 @@ LIBGCC_EH := $(shell $($(combo_2nd_arch_prefix)TARGET_CC) $($(combo_2nd_arch_pre
 ifneq ($(LIBGCC_EH),libgcc_eh.a)
   $(combo_2nd_arch_prefix)TARGET_LIBGCC += $(LIBGCC_EH)
 endif
+$(combo_2nd_arch_prefix)TARGET_LIBGCOV := $(shell $($(combo_2nd_arch_prefix)TARGET_CC) $($(combo_2nd_arch_prefix)TARGET_GLOBAL_CFLAGS) \
+        --print-file-name=libgcov.a)
 endif
 
 KERNEL_HEADERS_COMMON := $(libc_root)/kernel/uapi
@@ -146,7 +151,6 @@ KERNEL_HEADERS := $(KERNEL_HEADERS_COMMON) $(KERNEL_HEADERS_ARCH)
 $(combo_2nd_arch_prefix)TARGET_C_INCLUDES := \
 	$(libc_root)/arch-mips/include \
 	$(libc_root)/include \
-	$(libstdc++_root)/include \
 	$(KERNEL_HEADERS) \
 	$(libm_root)/include \
 	$(libm_root)/include/mips \
@@ -160,6 +164,11 @@ $(combo_2nd_arch_prefix)TARGET_CRTEND_SO_O := $($(combo_2nd_arch_prefix)TARGET_O
 
 $(combo_2nd_arch_prefix)TARGET_STRIP_MODULE:=true
 
+<<<<<<< HEAD
+$(combo_2nd_arch_prefix)TARGET_DEFAULT_SYSTEM_SHARED_LIBRARIES := libc libm
+
+$(combo_2nd_arch_prefix)TARGET_LINKER := /system/bin/linker
+=======
 $(combo_2nd_arch_prefix)TARGET_DEFAULT_SYSTEM_SHARED_LIBRARIES := libc libstdc++ libm
 
 $(combo_2nd_arch_prefix)TARGET_CUSTOM_LD_COMMAND := true
@@ -237,3 +246,4 @@ $(hide) $(PRIVATE_CXX) -nostdlib -Bstatic \
 	-Wl,--end-group \
 	$(if $(filter true,$(PRIVATE_NO_CRT)),,$(PRIVATE_TARGET_CRTEND_O))
 endef
+>>>>>>> cm-12.0

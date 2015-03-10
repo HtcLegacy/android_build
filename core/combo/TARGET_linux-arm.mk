@@ -35,10 +35,10 @@ TARGET_$(combo_2nd_arch_prefix)ARCH_VARIANT := armv5te
 endif
 
 # Decouple NDK library selection with platform compiler version
-$(combo_2nd_arch_prefix)TARGET_NDK_GCC_VERSION := 4.8
+$(combo_2nd_arch_prefix)TARGET_NDK_GCC_VERSION := 4.9
 
 ifeq ($(strip $(TARGET_GCC_VERSION_EXP)),)
-$(combo_2nd_arch_prefix)TARGET_GCC_VERSION := 4.8
+$(combo_2nd_arch_prefix)TARGET_GCC_VERSION := 4.9
 else
 $(combo_2nd_arch_prefix)TARGET_GCC_VERSION := $(TARGET_GCC_VERSION_EXP)
 endif
@@ -114,7 +114,7 @@ $(combo_2nd_arch_prefix)TARGET_GLOBAL_CFLAGS += \
 # "-Wall -Werror" due to a commom idiom "ALOGV(mesg)" where ALOGV is turned
 # into no-op in some builds while mesg is defined earlier. So we explicitly
 # disable "-Wunused-but-set-variable" here.
-ifneq ($(filter 4.6 4.6.% 4.7 4.7.% 4.8, $($(combo_2nd_arch_prefix)TARGET_GCC_VERSION)),)
+ifneq ($(filter 4.6 4.6.% 4.7 4.7.% 4.8 4.9, $($(combo_2nd_arch_prefix)TARGET_GCC_VERSION)),)
 $(combo_2nd_arch_prefix)TARGET_GLOBAL_CFLAGS += -fno-builtin-sin \
 			-fno-strict-volatile-bitfields
 endif
@@ -133,9 +133,11 @@ $(combo_2nd_arch_prefix)TARGET_GLOBAL_LDFLAGS += \
 			-Wl,-z,noexecstack \
 			-Wl,-z,relro \
 			-Wl,-z,now \
+			-Wl,--build-id=md5 \
 			-Wl,--warn-shared-textrel \
 			-Wl,--fatal-warnings \
 			-Wl,--icf=safe \
+			-Wl,--hash-style=gnu \
 			$(arch_variant_ldflags)
 
 $(combo_2nd_arch_prefix)TARGET_GLOBAL_CFLAGS += -mthumb-interwork
@@ -153,7 +155,6 @@ $(combo_2nd_arch_prefix)TARGET_RELEASE_CFLAGS := \
 
 libc_root := bionic/libc
 libm_root := bionic/libm
-libstdc++_root := bionic/libstdc++
 
 
 ## on some hosts, the target cross-compiler is not available so do not run this command
@@ -165,6 +166,8 @@ $(combo_2nd_arch_prefix)TARGET_LIBGCC := $(shell $($(combo_2nd_arch_prefix)TARGE
         $($(combo_2nd_arch_prefix)TARGET_GLOBAL_CFLAGS) -print-libgcc-file-name)
 $(combo_2nd_arch_prefix)TARGET_LIBATOMIC := $(shell $($(combo_2nd_arch_prefix)TARGET_CC) \
         $($(combo_2nd_arch_prefix)TARGET_GLOBAL_CFLAGS) -print-file-name=libatomic.a)
+$(combo_2nd_arch_prefix)TARGET_LIBGCOV := $(shell $($(combo_2nd_arch_prefix)TARGET_CC) \
+        $($(combo_2nd_arch_prefix)TARGET_GLOBAL_CFLAGS) -print-file-name=libgcov.a)
 endif
 
 KERNEL_HEADERS_COMMON := $(libc_root)/kernel/uapi
@@ -174,7 +177,6 @@ KERNEL_HEADERS := $(KERNEL_HEADERS_COMMON) $(KERNEL_HEADERS_ARCH)
 $(combo_2nd_arch_prefix)TARGET_C_INCLUDES := \
 	$(libc_root)/arch-arm/include \
 	$(libc_root)/include \
-	$(libstdc++_root)/include \
 	$(KERNEL_HEADERS) \
 	$(libm_root)/include \
 	$(libm_root)/include/arm \
@@ -188,8 +190,11 @@ $(combo_2nd_arch_prefix)TARGET_CRTEND_SO_O := $($(combo_2nd_arch_prefix)TARGET_O
 
 $(combo_2nd_arch_prefix)TARGET_STRIP_MODULE:=true
 
-$(combo_2nd_arch_prefix)TARGET_DEFAULT_SYSTEM_SHARED_LIBRARIES := libc libstdc++ libm
+$(combo_2nd_arch_prefix)TARGET_DEFAULT_SYSTEM_SHARED_LIBRARIES := libc libm
 
+<<<<<<< HEAD
+$(combo_2nd_arch_prefix)TARGET_LINKER := /system/bin/linker
+=======
 $(combo_2nd_arch_prefix)TARGET_CUSTOM_LD_COMMAND := true
 
 define $(combo_2nd_arch_prefix)transform-o-to-shared-lib-inner
@@ -265,3 +270,4 @@ $(hide) $(PRIVATE_CXX) -nostdlib -Bstatic \
 	-Wl,--end-group \
 	$(if $(filter true,$(PRIVATE_NO_CRT)),,$(PRIVATE_TARGET_CRTEND_O))
 endef
+>>>>>>> cm-12.0

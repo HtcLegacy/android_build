@@ -260,6 +260,8 @@ all_product_configs :=
 
 
 #############################################################################
+<<<<<<< HEAD
+=======
 # TODO: Remove this hack once only 1 runtime is left.
 # Include the runtime product makefile based on the product's PRODUCT_RUNTIMES
 $(call clear-var-list, $(_product_var_list))
@@ -292,6 +294,7 @@ ifeq ($(DEX_PREOPT_DEFAULT),)
 endif
 
 #############################################################################
+>>>>>>> cm-12.0
 
 # A list of module names of BOOTCLASSPATH (jar files)
 PRODUCT_BOOT_JARS := $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_BOOT_JARS))
@@ -430,9 +433,6 @@ PRODUCT_PACKAGE_OVERLAYS := \
 DEVICE_PACKAGE_OVERLAYS := \
         $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).DEVICE_PACKAGE_OVERLAYS))
 
-# An list of whitespace-separated words.
-PRODUCT_TAGS := $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_TAGS))
-
 # The list of product-specific kernel header dirs
 PRODUCT_VENDOR_KERNEL_HEADERS := \
     $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VENDOR_KERNEL_HEADERS)
@@ -452,6 +452,20 @@ PRODUCT_OTA_PUBLIC_KEYS := $(sort \
 PRODUCT_EXTRA_RECOVERY_KEYS := $(sort \
     $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_EXTRA_RECOVERY_KEYS))
 
-# If there is no room in /system for the image, place it in /data
-PRODUCT_DEX_PREOPT_IMAGE_IN_DATA := \
-    $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_DEX_PREOPT_IMAGE_IN_DATA))
+PRODUCT_DEX_PREOPT_DEFAULT_FLAGS := \
+    $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_DEX_PREOPT_DEFAULT_FLAGS))
+PRODUCT_DEX_PREOPT_BOOT_FLAGS := \
+    $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_DEX_PREOPT_BOOT_FLAGS))
+# Resolve and setup per-module dex-preopot configs.
+PRODUCT_DEX_PREOPT_MODULE_CONFIGS := \
+    $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_DEX_PREOPT_MODULE_CONFIGS))
+# If a module has multiple setups, the first takes precedence.
+_pdpmc_modules :=
+$(foreach c,$(PRODUCT_DEX_PREOPT_MODULE_CONFIGS),\
+  $(eval m := $(firstword $(subst =,$(space),$(c))))\
+  $(if $(filter $(_pdpmc_modules),$(m)),,\
+    $(eval _pdpmc_modules += $(m))\
+    $(eval cf := $(patsubst $(m)=%,%,$(c)))\
+    $(eval cf := $(subst $(_PDPMC_SP_PLACE_HOLDER),$(space),$(cf)))\
+    $(eval DEXPREOPT.$(TARGET_PRODUCT).$(m).CONFIG := $(cf))))
+_pdpmc_modules :=

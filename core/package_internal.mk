@@ -324,7 +324,12 @@ endif # LOCAL_NO_STANDARD_LIBRARIES
 
 ifneq ($(full_classes_jar),)
 $(LOCAL_BUILT_MODULE): PRIVATE_DEX_FILE := $(built_dex)
+# Use the jarjar processed arhive as the initial package file.
+$(LOCAL_BUILT_MODULE): PRIVATE_SOURCE_ARCHIVE := $(full_classes_jarjar_jar)
 $(LOCAL_BUILT_MODULE): $(built_dex)
+else
+$(LOCAL_BUILT_MODULE): PRIVATE_DEX_FILE :=
+$(LOCAL_BUILT_MODULE): PRIVATE_SOURCE_ARCHIVE :=
 endif # full_classes_jar
 
 include $(BUILD_SYSTEM)/install_jni_libs.mk
@@ -368,6 +373,8 @@ $(LOCAL_BUILT_MODULE): $(AAPT) | $(ZIPALIGN)
 $(LOCAL_BUILT_MODULE): PRIVATE_JNI_SHARED_LIBRARIES := $(jni_shared_libraries_with_abis)
 # PRIVATE_JNI_SHARED_LIBRARIES_ABI is a list of ABI names.
 $(LOCAL_BUILT_MODULE): PRIVATE_JNI_SHARED_LIBRARIES_ABI := $(jni_shared_libraries_abis)
+$(LOCAL_BUILT_MODULE): PRIVATE_JNI_SHARED_LIBRARIES_ZIP_OPTIONS := $(LOCAL_JNI_SHARED_LIBRARIES_ZIP_OPTIONS)
+$(LOCAL_BUILT_MODULE): PRIVATE_PAGE_ALIGN_JNI_SHARED_LIBRARIES := $(LOCAL_PAGE_ALIGN_JNI_SHARED_LIBRARIES)
 ifneq ($(TARGET_BUILD_APPS),)
     # Include all resources for unbundled apps.
     LOCAL_AAPT_INCLUDE_ALL_RESOURCES := true
@@ -383,19 +390,18 @@ else
     $(LOCAL_BUILT_MODULE): PRIVATE_PRODUCT_AAPT_PREF_CONFIG := $(PRODUCT_AAPT_PREF_CONFIG)
 endif
 endif
+$(LOCAL_BUILT_MODULE): PRIVATE_DONT_DELETE_JAR_DIRS := $(LOCAL_DONT_DELETE_JAR_DIRS)
 $(LOCAL_BUILT_MODULE): $(all_res_assets) $(jni_shared_libraries) $(full_android_manifest)
 	@echo "target Package: $(PRIVATE_MODULE) ($@)"
-	$(create-empty-package)
+	$(if $(PRIVATE_SOURCE_ARCHIVE),\
+	  $(call initialize-package-file,$(PRIVATE_SOURCE_ARCHIVE),$@),\
+	  $(create-empty-package))
 	$(add-assets-to-package)
 ifneq ($(jni_shared_libraries),)
 	$(add-jni-shared-libs-to-package)
 endif
 ifneq ($(full_classes_jar),)
 	$(add-dex-to-package)
-endif
-	$(add-carried-java-resources)
-ifneq ($(extra_jar_args),)
-	$(add-java-resources-to-package)
 endif
 	$(sign-package)
 ifdef LOCAL_DEX_PREOPT
@@ -481,7 +487,7 @@ $(apk_jni_stripped) : $(LOCAL_BUILT_MODULE) | $(ZIPALIGN)
 	@rm -rf $(dir $@) && mkdir -p $(dir $@)
 	$(hide) cp $< $@
 	$(hide) zip -d $@ $(foreach f,$(PRIVATE_JNI_SHARED_LIBRARIES),\*/$(f))
-	$(call align-package)
+	$(align-package)
 
 $(call dist-for-goals, apps_only, $(apk_jni_stripped):$(dist_subdir)/$(LOCAL_PACKAGE_NAME).apk)
 

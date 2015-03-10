@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2013 The Android Open Source Project
+# Copyright (C) 2014 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,9 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+LOCAL_PATH := $(call my-dir)
 
-# Set ART as the default runtime environment
-
-DALVIK_VM_LIB := libart.so
-
-include $(SRC_TARGET_DIR)/product/runtime_libart.mk
+# the signtos tool - signs Trusty images
+# ============================================================
+include $(CLEAR_VARS)
+LOCAL_MODULE := signtos
+LOCAL_SRC_FILES := SignTos.java
+LOCAL_JAR_MANIFEST := SignTos.mf
+LOCAL_STATIC_JAVA_LIBRARIES := bouncycastle-host bouncycastle-bcpkix-host
+include $(BUILD_HOST_JAVA_LIBRARY)

@@ -20,6 +20,7 @@
 # They will be compiled against libcore and not the host JRE.
 #
 
+ifeq ($(HOST_OS),linux)
 USE_CORE_LIB_BOOTCLASSPATH := true
 
 #######################################
@@ -69,8 +70,14 @@ $(full_classes_compiled_jar): PRIVATE_JAR_EXCLUDE_FILES :=
 $(full_classes_compiled_jar): PRIVATE_JAR_PACKAGES :=
 $(full_classes_compiled_jar): PRIVATE_JAR_EXCLUDE_PACKAGES :=
 $(full_classes_compiled_jar): PRIVATE_RMTYPEDEFS :=
-$(full_classes_compiled_jar): $(java_sources) $(java_resource_sources) $(full_java_lib_deps) \
-        $(jar_manifest_file) $(proto_java_sources_file_stamp) $(LOCAL_ADDITIONAL_DEPENDENCIES)
+$(full_classes_compiled_jar): \
+        $(java_sources) \
+        $(java_resource_sources) \
+        $(full_java_lib_deps) \
+        $(jar_manifest_file) \
+        $(proto_java_sources_file_stamp) \
+        $(LOCAL_MODULE_MAKEFILE) \
+        $(LOCAL_ADDITIONAL_DEPENDENCIES)
 	$(transform-host-java-to-package)
 
 # Run jarjar if necessary, otherwise just copy the file.
@@ -95,13 +102,13 @@ $(built_dex): $(full_classes_jar) $(DX)
 	$(transform-classes.jar-to-dex)
 
 $(LOCAL_BUILT_MODULE): PRIVATE_DEX_FILE := $(built_dex)
+$(LOCAL_BUILT_MODULE): PRIVATE_SOURCE_ARCHIVE := $(full_classes_jarjar_jar)
+$(LOCAL_BUILT_MODULE): PRIVATE_DONT_DELETE_JAR_DIRS := $(LOCAL_DONT_DELETE_JAR_DIRS)
 $(LOCAL_BUILT_MODULE): $(built_dex) $(java_resource_sources)
 	@echo "Host Jar: $(PRIVATE_MODULE) ($@)"
-	$(create-empty-package)
+	$(call initialize-package-file,$(PRIVATE_SOURCE_ARCHIVE),$@)
 	$(add-dex-to-package)
-	$(add-carried-java-resources)
-ifneq ($(extra_jar_args),)
-	$(add-java-resources-to-package)
-endif
 
 USE_CORE_LIB_BOOTCLASSPATH :=
+
+endif

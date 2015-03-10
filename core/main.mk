@@ -79,7 +79,8 @@ dont_bother_goals := clean clobber dataclean installclean \
     cacheimage-nodeps \
     vendorimage-nodeps \
     ramdisk-nodeps \
-    bootimage-nodeps
+    bootimage-nodeps \
+    recoveryimage-nodeps
 
 ifneq ($(filter $(dont_bother_goals), $(MAKECMDGOALS)),)
 dont_bother := true
@@ -144,18 +145,18 @@ java_version_str := $(shell unset _JAVA_OPTIONS && java -version 2>&1)
 javac_version_str := $(shell unset _JAVA_OPTIONS && javac -version 2>&1)
 
 # Check for the correct version of java, should be 1.7 by
-# default, and 1.6 if LEGACY_USE_JAVA6 is set.
-ifeq ($(LEGACY_USE_JAVA6),)
+# default, and 1.8 if EXPERIMENTAL_USE_JAVA8 is set
+ifneq ($(EXPERIMENTAL_USE_JAVA8),)
+required_version := "1.8.x"
+required_javac_version := "1.8"
+java_version := $(shell echo '$(java_version_str)' | grep 'openjdk .*[ "]1\.8[\. "$$]')
+javac_version := $(shell echo '$(javac_version_str)' | grep '[ "]1\.8[\. "$$]')
+else # default
 required_version := "1.7.x"
 required_javac_version := "1.7"
 java_version := $(shell echo '$(java_version_str)' | grep '^java .*[ "]1\.7[\. "$$]')
 javac_version := $(shell echo '$(javac_version_str)' | grep '[ "]1\.7[\. "$$]')
-else # if LEGACY_USE_JAVA6
-required_version := "1.6.x"
-required_javac_version := "1.6"
-java_version := $(shell echo '$(java_version_str)' | grep '^java .*[ "]1\.6[\. "$$]')
-javac_version := $(shell echo '$(javac_version_str)' | grep '[ "]1\.6[\. "$$]')
-endif # if LEGACY_USE_JAVA6
+endif # if EXPERIMENTAL_USE_JAVA8
 
 ifeq ($(strip $(java_version)),)
 $(info ************************************************************)
@@ -173,12 +174,9 @@ endif
 # Check for the current JDK.
 #
 # For Java 1.7, we require OpenJDK on linux and Oracle JDK on Mac OS.
-# For Java 1.6, we require Oracle for all host OSes.
 requires_openjdk := false
-ifeq ($(LEGACY_USE_JAVA6),)
 ifeq ($(HOST_OS), linux)
 requires_openjdk := true
-endif
 endif
 
 
@@ -278,8 +276,8 @@ endif
 ifneq ($(filter-out $(INTERNAL_VALID_VARIANTS),$(TARGET_BUILD_VARIANT)),)
 $(info ***************************************************************)
 $(info ***************************************************************)
-$(info Invalid variant: $(TARGET_BUILD_VARIANT)
-$(info Valid values are: $(INTERNAL_VALID_VARIANTS)
+$(info Invalid variant: $(TARGET_BUILD_VARIANT))
+$(info Valid values are: $(INTERNAL_VALID_VARIANTS))
 $(info ***************************************************************)
 $(info ***************************************************************)
 $(error stopping)
@@ -309,9 +307,19 @@ ifneq ($(filter sdk win_sdk sdk_addon,$(MAKECMDGOALS)),)
 is_sdk_build := true
 endif
 
-ADDITIONAL_BUILD_PROPERTIES += dalvik.vm.isa.$(TARGET_ARCH).features=$(DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES)
+# Add build properties for ART. These define system properties used by installd
+# to pass flags to dex2oat.
+ADDITIONAL_BUILD_PROPERTIES += persist.sys.dalvik.vm.lib.2=libart
+ADDITIONAL_BUILD_PROPERTIES += dalvik.vm.isa.$(TARGET_ARCH).variant=$(DEX2OAT_TARGET_CPU_VARIANT)
+ifneq ($(DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES),)
+  ADDITIONAL_BUILD_PROPERTIES += dalvik.vm.isa.$(TARGET_ARCH).features=$(DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES)
+endif
+
 ifdef TARGET_2ND_ARCH
-ADDITIONAL_BUILD_PROPERTIES += dalvik.vm.isa.$(TARGET_2ND_ARCH).features=$($(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES)
+  ADDITIONAL_BUILD_PROPERTIES += dalvik.vm.isa.$(TARGET_2ND_ARCH).variant=$($(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_CPU_VARIANT)
+  ifneq ($($(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES),)
+    ADDITIONAL_BUILD_PROPERTIES += dalvik.vm.isa.$(TARGET_2ND_ARCH).features=$($(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES)
+  endif
 endif
 
 ## user/userdebug ##
@@ -326,23 +334,19 @@ ifneq (,$(user_variant))
   ifeq ($(user_variant),userdebug)
     # Pick up some extra useful tools
     tags_to_install += debug
-
-    # Enable Dalvik lock contention logging for userdebug builds.
-    ADDITIONAL_BUILD_PROPERTIES += dalvik.vm.lockprof.threshold=500
   else
     # Disable debugging in plain user builds.
     enable_target_debugging :=
   endif
 
-  # Turn on Dalvik preoptimization for libdvm.so user builds, but only if not
+  # Turn on Dalvik preoptimization for user builds, but only if not
   # explicitly disabled and the build is running on Linux (since host
   # Dalvik isn't built for non-Linux hosts).
   ifeq (,$(WITH_DEXPREOPT))
-    ifeq ($(DALVIK_VM_LIB),libdvm.so)
-      ifeq ($(user_variant),user)
-        ifeq ($(HOST_OS),linux)
-          WITH_DEXPREOPT := true
-        endif
+    ifeq ($(user_variant),user)
+      ifeq ($(HOST_OS),linux)
+        # TODO: turn on WITH_DEXPREOPT for libart user builds.
+        # WITH_DEXPREOPT := true
       endif
     endif
   endif
@@ -362,6 +366,8 @@ endif # !user_variant
 ifeq (true,$(strip $(enable_target_debugging)))
   # Target is more debuggable and adbd is on by default
   ADDITIONAL_DEFAULT_PROPERTIES += ro.debuggable=1
+  # Enable Dalvik lock contention logging.
+  ADDITIONAL_BUILD_PROPERTIES += dalvik.vm.lockprof.threshold=500
   # Include the debugging/testing OTA keys in this build.
   INCLUDE_TEST_OTA_KEYS := true
 else # !enable_target_debugging
@@ -408,16 +414,6 @@ else # !sdk
 endif
 
 BUILD_WITHOUT_PV := true
-
-## precise GC ##
-
-ifneq ($(filter dalvik.gc.type-precise,$(PRODUCT_TAGS)),)
-  # Enabling type-precise GC results in larger optimized DEX files.  The
-  # additional storage requirements for ".odex" files can cause /system
-  # to overflow on some devices, so this is configured separately for
-  # each product.
-  ADDITIONAL_BUILD_PROPERTIES += dalvik.vm.dexopt-flags=m=y
-endif
 
 ADDITIONAL_BUILD_PROPERTIES += net.bt.name=Android
 
@@ -772,10 +768,6 @@ ifdef is_sdk_build
   $(foreach m, $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_PACKAGES), \
     $(if $(strip $(ALL_MODULES.$(m).INSTALLED) $(ALL_MODULES.$(m)$(TARGET_2ND_ARCH_MODULE_SUFFIX).INSTALLED)),,\
       $(eval dangling_modules += $(m))))
-  ifneq ($(TARGET_IS_64_BIT),true)
-    # We know those 64-bit modules don't exist in the 32-bit SDK build.
-    dangling_modules := $(filter-out %64,$(dangling_modules))
-  endif
   ifneq ($(dangling_modules),)
     $(warning: Modules '$(dangling_modules)' in PRODUCT_PACKAGES have nothing to install!)
   endif
@@ -848,12 +840,6 @@ endif
 
 .PHONY: ramdisk
 ramdisk: $(INSTALLED_RAMDISK_TARGET)
-
-.PHONY: factory_ramdisk
-factory_ramdisk: $(INSTALLED_FACTORY_RAMDISK_TARGET)
-
-.PHONY: factory_bundle
-factory_bundle: $(INSTALLED_FACTORY_BUNDLE_TARGET)
 
 .PHONY: systemtarball
 systemtarball: $(INSTALLED_SYSTEMTARBALL_TARGET)
@@ -964,8 +950,6 @@ else # TARGET_BUILD_APPS
     $(BUILT_TARGET_FILES_PACKAGE) \
     $(INSTALLED_ANDROID_INFO_TXT_TARGET) \
     $(INSTALLED_RAMDISK_TARGET) \
-    $(INSTALLED_FACTORY_RAMDISK_TARGET) \
-    $(INSTALLED_FACTORY_BUNDLE_TARGET) \
    )
 
   # Put a copy of the radio/bootloader files in the dist dir.

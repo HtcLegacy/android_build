@@ -17,6 +17,8 @@ Invoke ". build/envsetup.sh" from your shell to add the following functions to y
 - ggrep:   Greps on all local Gradle files.
 - jgrep:   Greps on all local Java files.
 - resgrep: Greps on all local res/*.xml files.
+- mangrep: Greps on all local AndroidManifest.xml files.
+- sepgrep: Greps on all local sepolicy files.
 - sgrep:   Greps on all local source files.
 - godir:   Go to the directory containing a file.
 - cmremote: Add git remote for CM Gerrit Review
@@ -31,6 +33,11 @@ Invoke ". build/envsetup.sh" from your shell to add the following functions to y
 - repopick: Utility to fetch changes from Gerrit.
 - installboot: Installs a boot.img to the connected device.
 - installrecovery: Installs a recovery.img to the connected device.
+
+Environemnt options:
+- SANITIZE_HOST: Set to 'true' to use ASAN for all host modules. Note that
+                 ASAN_OPTIONS=detect_leaks=0 will be set by default until the
+                 build is leak-check clean.
 
 Look at the source to view more functions. The complete list is:
 EOF
@@ -254,6 +261,7 @@ function set_stuff_for_environment()
 
     # With this environment variable new GCC can apply colors to warnings/errors
     export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
+    export ASAN_OPTIONS=detect_leaks=0
 }
 
 function set_sequence_number()
@@ -1100,18 +1108,6 @@ function stacks()
     fi
 }
 
-function gdbwrapper()
-{
-    local GDB_CMD="$1"
-    shift 1
-    $GDB_CMD -x "$@"
-}
-
-function get_symbols_directory()
-{
-    echo $(get_abs_build_var TARGET_OUT_UNSTRIPPED)
-}
-
 # Read the ELF header from /proc/$PID/exe to determine if the process is
 # 64-bit.
 function is64bit()
@@ -1128,6 +1124,8 @@ function is64bit()
     fi
 }
 
+<<<<<<< HEAD
+=======
 # gdbclient now determines whether the user wants to debug a 32-bit or 64-bit
 # executable, set up the approriate gdbserver, then invokes the proper host
 # gdb.
@@ -1333,6 +1331,7 @@ function dddclient()
 }
 
 
+>>>>>>> cm-12.0
 case `uname -s` in
     Darwin)
         function sgrep()
@@ -1366,7 +1365,7 @@ function jgrep()
 
 function cgrep()
 {
-    find . -name .repo -prune -o -name .git -prune -o -name out -prune -o -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.h' \) -print0 | xargs -0 grep --color -n "$@"
+    find . -name .repo -prune -o -name .git -prune -o -name out -prune -o -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.h' -o -name '*.hpp' \) -print0 | xargs -0 grep --color -n "$@"
 }
 
 function resgrep()
@@ -1664,6 +1663,9 @@ function godir () {
     \cd $T/$pathname
 }
 
+<<<<<<< HEAD
+# Force JAVA_HOME to point to java 1.7 if it isn't already set.
+=======
 function cmremote()
 {
     git remote rm cmremote 2> /dev/null
@@ -2299,6 +2301,7 @@ function fixup_common_out_dir() {
 }
 
 # Force JAVA_HOME to point to java 1.7 or java 1.6  if it isn't already set.
+>>>>>>> cm-12.0
 #
 # Note that the MacOS path for java 1.7 includes a minor revision number (sigh).
 # For some reason, installing the JDK doesn't make it show up in the
@@ -2315,25 +2318,14 @@ function set_java_home() {
     fi
 
     if [ ! "$JAVA_HOME" ]; then
-      if [ -n "$LEGACY_USE_JAVA6" ]; then
-        case `uname -s` in
-            Darwin)
-                export JAVA_HOME=/System/Library/Frameworks/JavaVM.framework/Versions/1.6/Home
-                ;;
-            *)
-                export JAVA_HOME=/usr/lib/jvm/java-6-sun
-                ;;
-        esac
-      else
-        case `uname -s` in
-            Darwin)
-                export JAVA_HOME=$(/usr/libexec/java_home -v 1.7)
-                ;;
-            *)
-                export JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
-                ;;
-        esac
-      fi
+      case `uname -s` in
+          Darwin)
+              export JAVA_HOME=$(/usr/libexec/java_home -v 1.7)
+              ;;
+          *)
+              export JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
+              ;;
+      esac
 
       # Keep track of the fact that we set JAVA_HOME ourselves, so that
       # we can change it on the next envsetup.sh, if required.
@@ -2369,11 +2361,21 @@ function make()
     local hours=$(($tdiff / 3600 ))
     local mins=$((($tdiff % 3600) / 60))
     local secs=$(($tdiff % 60))
+    local ncolors=$(tput colors 2>/dev/null)
+    if [ -n "$ncolors" ] && [ $ncolors -ge 8 ]; then
+        color_failed="\e[0;31m"
+        color_success="\e[0;32m"
+        color_reset="\e[00m"
+    else
+        color_failed=""
+        color_success=""
+        color_reset=""
+    fi
     echo
     if [ $ret -eq 0 ] ; then
-        echo -n -e "#### make completed successfully "
+        echo -n -e "${color_success}#### make completed successfully "
     else
-        echo -n -e "#### make failed to build some targets "
+        echo -n -e "${color_failed}#### make failed to build some targets "
     fi
     if [ $hours -gt 0 ] ; then
         printf "(%02g:%02g:%02g (hh:mm:ss))" $hours $mins $secs
@@ -2382,12 +2384,10 @@ function make()
     elif [ $secs -gt 0 ] ; then
         printf "(%s seconds)" $secs
     fi
-    echo -e " ####"
+    echo -e " ####${color_reset}"
     echo
     return $ret
 }
-
-
 
 if [ "x$SHELL" != "x/bin/bash" ]; then
     case `ps -o command -p $$` in
