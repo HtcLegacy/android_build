@@ -302,6 +302,7 @@ $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
 
+<<<<<<< HEAD
 # Move to libc++ as the default STL.
 $(call add-clean-step, rm -rf $(OUT_DIR))
 
@@ -317,6 +318,12 @@ $(call add-clean-step, rm -rf $(OUT_DIR))
 
 # Remove ro.product.locale.language/country and add ro.product.locale
 # instead.
+=======
+# 5.0.1
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+
+# 5.0.2
+>>>>>>> cm-12.0
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
 
 # ************************************************

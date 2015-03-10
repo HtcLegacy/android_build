@@ -48,11 +48,14 @@ CLANG_CONFIG_EXTRA_CFLAGS += \
 CLANG_CONFIG_EXTRA_CFLAGS += \
   -Wno-unused-command-line-argument
 
+<<<<<<< HEAD
 # Disable -Winconsistent-missing-override until we can clean up the existing
 # codebase for it.
 CLANG_CONFIG_EXTRA_CPPFLAGS += \
   -Wno-inconsistent-missing-override
 
+=======
+>>>>>>> cm-12.0
 CLANG_CONFIG_UNKNOWN_CFLAGS := \
   -finline-functions \
   -finline-limit=64 \

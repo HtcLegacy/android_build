@@ -143,6 +143,8 @@ def LoadInfoDict(input):
   if "fstab_version" not in d:
     d["fstab_version"] = "1"
 
+  if "device_type" not in d:
+    d["device_type"] = "MMC"
   try:
     data = read_helper("META/imagesizes.txt")
     for line in data.split("\n"):
@@ -170,7 +172,7 @@ def LoadInfoDict(input):
   makeint("boot_size")
   makeint("fstab_version")
 
-  d["fstab"] = LoadRecoveryFSTab(read_helper, d["fstab_version"])
+  d["fstab"] = LoadRecoveryFSTab(read_helper, d["fstab_version"], d["device_type"])
   d["build.prop"] = LoadBuildProp(read_helper)
   return d
 
@@ -192,7 +194,7 @@ def LoadDictionaryFromLines(lines):
       d[name] = value
   return d
 
-def LoadRecoveryFSTab(read_helper, fstab_version):
+def LoadRecoveryFSTab(read_helper, fstab_version, type):
   class Partition(object):
     pass
 
@@ -294,6 +296,7 @@ def BuildBootableImage(sourcedir, fs_config_file, info_dict=None):
 
   ramdisk_img = tempfile.NamedTemporaryFile()
   img = tempfile.NamedTemporaryFile()
+  bootimg_key = os.getenv("PRODUCT_PRIVATE_KEY", None)
 
   if os.access(fs_config_file, os.F_OK):
     cmd = ["mkbootfs", "-f", fs_config_file, os.path.join(sourcedir, "RAMDISK")]
@@ -308,42 +311,108 @@ def BuildBootableImage(sourcedir, fs_config_file, info_dict=None):
   assert p1.returncode == 0, "mkbootfs of %s ramdisk failed" % (targetname,)
   assert p2.returncode == 0, "minigzip of %s ramdisk failed" % (targetname,)
 
-  # use MKBOOTIMG from environ, or "mkbootimg" if empty or not set
-  mkbootimg = os.getenv('MKBOOTIMG') or "mkbootimg"
-
-  cmd = [mkbootimg, "--kernel", os.path.join(sourcedir, "kernel")]
-
-  fn = os.path.join(sourcedir, "second")
+  """check if uboot is requested"""
+  fn = os.path.join(sourcedir, "ubootargs")
   if os.access(fn, os.F_OK):
-    cmd.append("--second")
-    cmd.append(fn)
+    cmd = ["mkimage"]
+    for argument in open(fn).read().rstrip("\n").split(" "):
+      cmd.append(argument)
+    cmd.append("-d")
+    cmd.append(os.path.join(sourcedir, "kernel")+":"+ramdisk_img.name)
+    cmd.append(img.name)
 
-  fn = os.path.join(sourcedir, "cmdline")
-  if os.access(fn, os.F_OK):
-    cmd.append("--cmdline")
-    cmd.append(open(fn).read().rstrip("\n"))
+  else:
+    # use MKBOOTIMG from environ, or "mkbootimg" if empty or not set
+    mkbootimg = os.getenv('MKBOOTIMG') or "mkbootimg"
+    cmd = [mkbootimg, "--kernel", os.path.join(sourcedir, "kernel")]
 
-  fn = os.path.join(sourcedir, "base")
-  if os.access(fn, os.F_OK):
-    cmd.append("--base")
-    cmd.append(open(fn).read().rstrip("\n"))
+    fn = os.path.join(sourcedir, "second")
+    if os.access(fn, os.F_OK):
+      cmd.append("--second")
+      cmd.append(fn)
 
-  fn = os.path.join(sourcedir, "pagesize")
-  if os.access(fn, os.F_OK):
-    cmd.append("--pagesize")
-    cmd.append(open(fn).read().rstrip("\n"))
+    fn = os.path.join(sourcedir, "cmdline")
+    if os.access(fn, os.F_OK):
+      cmd.append("--cmdline")
+      cmd.append(open(fn).read().rstrip("\n"))
 
-  args = info_dict.get("mkbootimg_args", None)
-  if args and args.strip():
-    cmd.extend(shlex.split(args))
+    fn = os.path.join(sourcedir, "base")
+    if os.access(fn, os.F_OK):
+      cmd.append("--base")
+      cmd.append(open(fn).read().rstrip("\n"))
 
-  cmd.extend(["--ramdisk", ramdisk_img.name,
-              "--output", img.name])
+    fn = os.path.join(sourcedir, "tagsaddr")
+    if os.access(fn, os.F_OK):
+      cmd.append("--tags-addr")
+      cmd.append(open(fn).read().rstrip("\n"))
 
+    fn = os.path.join(sourcedir, "tags_offset")
+    if os.access(fn, os.F_OK):
+      cmd.append("--tags_offset")
+      cmd.append(open(fn).read().rstrip("\n"))
+
+    fn = os.path.join(sourcedir, "ramdisk_offset")
+    if os.access(fn, os.F_OK):
+      cmd.append("--ramdisk_offset")
+      cmd.append(open(fn).read().rstrip("\n"))
+
+    fn = os.path.join(sourcedir, "dt")
+    if os.access(fn, os.F_OK):
+      cmd.append("--dt")
+      cmd.append(fn)
+
+    fn = os.path.join(sourcedir, "pagesize")
+    if os.access(fn, os.F_OK):
+      kernel_pagesize=open(fn).read().rstrip("\n")
+      cmd.append("--pagesize")
+      cmd.append(kernel_pagesize)
+
+    args = info_dict.get("mkbootimg_args", None)
+    if args and args.strip():
+      cmd.extend(shlex.split(args))
+
+    cmd.extend(["--ramdisk", ramdisk_img.name,
+                "--output", img.name])
   p = Run(cmd, stdout=subprocess.PIPE)
   p.communicate()
   assert p.returncode == 0, "mkbootimg of %s image failed" % (
       os.path.basename(sourcedir),)
+
+  if bootimg_key and os.path.exists(bootimg_key) and kernel_pagesize > 0:
+    print "Signing bootable image..."
+    bootimg_key_passwords = {}
+    bootimg_key_passwords.update(PasswordManager().GetPasswords(bootimg_key.split()))
+    bootimg_key_password = bootimg_key_passwords[bootimg_key]
+    if bootimg_key_password is not None:
+        bootimg_key_password += "\n"
+    img_sha256 = tempfile.NamedTemporaryFile()
+    img_sig = tempfile.NamedTemporaryFile()
+    img_sig_padded = tempfile.NamedTemporaryFile()
+    img_secure = tempfile.NamedTemporaryFile()
+    p = Run(["openssl", "dgst", "-sha256", "-binary", "-out", img_sha256.name, img.name],
+        stdout=subprocess.PIPE)
+    p.communicate()
+    assert p.returncode == 0, "signing of bootable image failed"
+    p = Run(["openssl", "rsautl", "-sign", "-in", img_sha256.name, "-inkey", bootimg_key, "-out",
+        img_sig.name, "-passin", "stdin"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    p.communicate(bootimg_key_password)
+    assert p.returncode == 0, "signing of bootable image failed"
+    p = Run(["dd", "if=/dev/zero", "of=%s" % img_sig_padded.name, "bs=%s" % kernel_pagesize,
+        "count=1"], stdout=subprocess.PIPE)
+    p.communicate()
+    assert p.returncode == 0, "signing of bootable image failed"
+    p = Run(["dd", "if=%s" % img_sig.name, "of=%s" % img_sig_padded.name, "conv=notrunc"],
+        stdout=subprocess.PIPE)
+    p.communicate()
+    assert p.returncode == 0, "signing of bootable image failed"
+    p = Run(["cat", img.name, img_sig_padded.name], stdout=img_secure.file.fileno())
+    p.communicate()
+    assert p.returncode == 0, "signing of bootable image failed"
+    shutil.copyfile(img_secure.name, img.name)
+    img_sha256.close()
+    img_sig.close()
+    img_sig_padded.close()
+    img_secure.close()
 
   if info_dict.get("verity_key", None):
     path = "/" + os.path.basename(sourcedir).lower()
@@ -403,6 +472,7 @@ def UnzipTemp(filename, pattern=None):
   OPTIONS.tempfiles.append(tmp)
 
   def unzip_to_dir(filename, dirname):
+    subprocess.call(["rm", "-rf", dirname + filename, "targetfiles-*"])
     cmd = ["unzip", "-o", "-q", filename, "-d", dirname]
     if pattern is not None:
       cmd.append(pattern)
@@ -845,6 +915,11 @@ class DeviceSpecificParams(object):
     used to install the image for the device's baseband processor."""
     return self._DoCall("FullOTA_InstallEnd")
 
+  def FullOTA_PostValidate(self):
+    """Called after installing and validating /system; typically this is
+    used to resize the system partition after a block based installation."""
+    return self._DoCall("FullOTA_PostValidate")
+
   def IncrementalOTA_Assertions(self):
     """Called after emitting the block of assertions at the top of an
     incremental OTA package.  Implementations can add whatever
@@ -1096,7 +1171,10 @@ DataImage = blockimgdiff.DataImage
 # map recovery.fstab's fs_types to mount/format "partition types"
 PARTITION_TYPES = { "yaffs2": "MTD", "mtd": "MTD",
                     "ext4": "EMMC", "emmc": "EMMC",
-                    "f2fs": "EMMC" }
+                    "f2fs": "EMMC",
+                    "ext2": "EMMC",
+                    "ext3": "EMMC",
+                    "vfat": "EMMC" }
 
 def GetTypeAndDevice(mount_point, info):
   fstab = info["fstab"]
@@ -1160,6 +1238,10 @@ def MakeRecoveryPatch(input_dir, output_sink, recovery_img, boot_img,
   recovery_type, recovery_device = td_pair
 
   sh = """#!/system/bin/sh
+if [ -f /system/etc/recovery-transform.sh ]; then
+  exec sh /system/etc/recovery-transform.sh %(recovery_size)d %(recovery_sha1)s %(boot_size)d %(boot_sha1)s
+fi
+
 if ! applypatch -c %(recovery_type)s:%(recovery_device)s:%(recovery_size)d:%(recovery_sha1)s; then
   applypatch %(bonus_args)s %(boot_type)s:%(boot_device)s:%(boot_size)d:%(boot_sha1)s %(recovery_type)s:%(recovery_device)s %(recovery_sha1)s %(recovery_size)d %(boot_sha1)s:/system/recovery-from-boot.p && log -t recovery "Installing new recovery image: succeeded" || log -t recovery "Installing new recovery image: failed"
 else

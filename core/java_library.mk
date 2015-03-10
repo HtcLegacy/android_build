@@ -56,7 +56,7 @@ $(common_javalib.jar) : $(full_classes_proguard_jar)
 else
 $(common_javalib.jar) : $(full_classes_jar)
 endif
-	@echo "target Static Jar: $(PRIVATE_MODULE) ($@)"
+	@echo -e ${CL_GRN}"target Static Jar:"${CL_RST}" $(PRIVATE_MODULE) ($@)"
 	$(copy-file-to-target)
 
 $(LOCAL_BUILT_MODULE): $(common_javalib.jar)
@@ -68,8 +68,13 @@ $(common_javalib.jar): PRIVATE_DEX_FILE := $(built_dex)
 $(common_javalib.jar): PRIVATE_SOURCE_ARCHIVE := $(full_classes_jarjar_jar)
 $(common_javalib.jar): PRIVATE_DONT_DELETE_JAR_DIRS := $(LOCAL_DONT_DELETE_JAR_DIRS)
 $(common_javalib.jar) : $(built_dex) $(java_resource_sources)
+<<<<<<< HEAD
 	@echo "target Jar: $(PRIVATE_MODULE) ($@)"
 	$(call initialize-package-file,$(PRIVATE_SOURCE_ARCHIVE),$@)
+=======
+	@echo -e ${CL_GRN}"target Jar:"${CL_RST}" $(PRIVATE_MODULE) ($@)"
+	$(create-empty-package)
+>>>>>>> cm-12.0
 	$(add-dex-to-package)
 
 ifdef LOCAL_DEX_PREOPT
@@ -84,7 +89,7 @@ else # ! boot jar
 $(built_odex): PRIVATE_MODULE := $(LOCAL_MODULE)
 # Use pattern rule - we may have multiple built odex files.
 $(built_odex) : $(dir $(LOCAL_BUILT_MODULE))% : $(common_javalib.jar)
-	@echo "Dexpreopt Jar: $(PRIVATE_MODULE) ($@)"
+	@echo -e ${CL_GRN}"Dexpreopt Jar:"${CL_RST}" $(PRIVATE_MODULE) ($@)"
 	$(call dexpreopt-one-file,$<,$@)
 
 $(LOCAL_BUILT_MODULE) : $(common_javalib.jar) | $(ACP)

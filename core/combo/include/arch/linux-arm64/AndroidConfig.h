@@ -62,4 +62,24 @@
  */
 #define HAVE_PRINTF_ZD 1
 
+<<<<<<< HEAD
+=======
+/*
+ * Define to 1 if <stdlib.h> provides qsort_r() with a BSD style function prototype.
+ */
+#define HAVE_BSD_QSORT_R 0
+
+/*
+ * Define to 1 if <stdlib.h> provides qsort_r() with a GNU style function prototype.
+ */
+#define HAVE_GNU_QSORT_R 0
+
+/*
+ * Define CONFIG_64BIT based on __LP64__
+ */
+#ifdef __LP64__
+#define  CONFIG_64BIT
+#endif
+
+>>>>>>> cm-12.0
 #endif /* _ANDROID_CONFIG_H */

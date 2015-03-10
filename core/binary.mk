@@ -361,7 +361,6 @@ ifneq ($(LOCAL_NO_SYNTAX_CHECK),true)
 endif
 endif
 $(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_CXX := $(my_cxx)
-$(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_CLANG := $(my_clang)
 
 # TODO: support a mix of standard extensions so that this isn't necessary
 LOCAL_CPP_EXTENSION := $(strip $(LOCAL_CPP_EXTENSION))
@@ -842,9 +841,14 @@ import_includes_deps := $(strip \
       $(call intermediates-dir-for,SHARED_LIBRARIES,$(l),$(LOCAL_IS_HOST_MODULE),,$(LOCAL_2ND_ARCH_VAR_PREFIX))/export_includes) \
     $(foreach l, $(my_static_libraries) $(my_whole_static_libraries), \
       $(call intermediates-dir-for,STATIC_LIBRARIES,$(l),$(LOCAL_IS_HOST_MODULE),,$(LOCAL_2ND_ARCH_VAR_PREFIX))/export_includes))
+<<<<<<< HEAD
 $(import_includes): PRIVATE_IMPORT_EXPORT_INCLUDES := $(import_includes_deps)
 $(import_includes) : $(LOCAL_MODULE_MAKEFILE) $(import_includes_deps)
 	@echo Import includes file: $@
+=======
+$(import_includes) : $(import_includes_deps)
+	@echo -e ${CL_CYN}Import includes file:${CL_RST} $@
+>>>>>>> cm-12.0
 	$(hide) mkdir -p $(dir $@) && rm -f $@
 ifdef import_includes_deps
 	$(hide) for f in $(PRIVATE_IMPORT_EXPORT_INCLUDES); do \
@@ -874,6 +878,11 @@ normal_objects := \
     $(addprefix $(TOPDIR)$(LOCAL_PATH)/,$(LOCAL_PREBUILT_OBJ_FILES))
 
 all_objects := $(normal_objects) $(gen_o_objects)
+
+## Allow a device's own headers to take precedence over global ones
+ifneq ($(TARGET_SPECIFIC_HEADER_PATH),)
+my_c_includes := $(TOPDIR)$(TARGET_SPECIFIC_HEADER_PATH) $(my_c_includes)
+endif
 
 my_c_includes += $(TOPDIR)$(LOCAL_PATH) $(intermediates) $(generated_sources_dir)
 
@@ -1033,7 +1042,7 @@ export_includes := $(intermediates)/export_includes
 $(export_includes): PRIVATE_EXPORT_C_INCLUDE_DIRS := $(LOCAL_EXPORT_C_INCLUDE_DIRS)
 # Make sure .pb.h are already generated before any dependent source files get compiled.
 $(export_includes) : $(LOCAL_MODULE_MAKEFILE) $(proto_generated_headers)
-	@echo Export includes file: $< -- $@
+	@echo -e ${CL_CYN}Export includes file:${CL_RST} $< -- $@
 	$(hide) mkdir -p $(dir $@) && rm -f $@
 ifdef LOCAL_EXPORT_C_INCLUDE_DIRS
 	$(hide) for d in $(PRIVATE_EXPORT_C_INCLUDE_DIRS); do \

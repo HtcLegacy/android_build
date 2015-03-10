@@ -40,7 +40,6 @@ SRC_HEADERS := \
 	$(TOPDIR)system/core/include \
 	$(TOPDIR)hardware/libhardware/include \
 	$(TOPDIR)hardware/libhardware_legacy/include \
-	$(TOPDIR)hardware/ril/include \
 	$(TOPDIR)libnativehelper/include \
 	$(TOPDIR)frameworks/native/include \
 	$(TOPDIR)frameworks/native/opengl/include \
@@ -155,6 +154,11 @@ endif
 # are specific to the user's build configuration.
 include $(BUILD_SYSTEM)/envsetup.mk
 
+# General entries for project pathmap.  Any entries listed here should
+# be device and hardware independent.
+$(call project-set-path-variant,recovery,RECOVERY_VARIANT,bootable/recovery)
+
+-include vendor/extra/BoardConfigExtra.mk
 # The build system exposes several variables for where to find the kernel
 # headers:
 #   TARGET_DEVICE_KERNEL_HEADERS is automatically created for the current
@@ -395,6 +399,7 @@ else
 MKBOOTIMG := $(BOARD_CUSTOM_MKBOOTIMG)
 endif
 APICHECK := $(HOST_OUT_EXECUTABLES)/apicheck$(HOST_EXECUTABLE_SUFFIX)
+MKIMAGE :=  $(HOST_OUT_EXECUTABLES)/mkimage$(HOST_EXECUTABLE_SUFFIX)
 FS_GET_STATS := $(HOST_OUT_EXECUTABLES)/fs_get_stats$(HOST_EXECUTABLE_SUFFIX)
 MAKE_EXT4FS := $(HOST_OUT_EXECUTABLES)/make_ext4fs$(HOST_EXECUTABLE_SUFFIX)
 MKEXTUSERIMG := $(HOST_OUT_EXECUTABLES)/mkuserimg.sh
@@ -479,10 +484,12 @@ else
   DEFAULT_SYSTEM_DEV_CERTIFICATE := build/target/product/security/testkey
 endif
 
+# Rules for QCOM targets
+include $(BUILD_SYSTEM)/qcom_target.mk
+
 # ###############################################################
 # Set up final options.
 # ###############################################################
-
 HOST_GLOBAL_CFLAGS += $(COMMON_GLOBAL_CFLAGS)
 HOST_RELEASE_CFLAGS += $(COMMON_RELEASE_CFLAGS)
 
@@ -499,7 +506,8 @@ HOST_GLOBAL_LD_DIRS += -L$(HOST_OUT_INTERMEDIATE_LIBRARIES)
 TARGET_GLOBAL_LD_DIRS += -L$(TARGET_OUT_INTERMEDIATE_LIBRARIES)
 
 HOST_PROJECT_INCLUDES:= $(SRC_HEADERS) $(SRC_HOST_HEADERS) $(HOST_OUT_HEADERS)
-TARGET_PROJECT_INCLUDES:= $(SRC_HEADERS) $(TARGET_OUT_HEADERS) \
+TARGET_PROJECT_INCLUDES:= $(SRC_HEADERS) $(TOPDIR)$(call project-path-for,ril)/include \
+		$(TARGET_OUT_HEADERS) \
 		$(TARGET_DEVICE_KERNEL_HEADERS) $(TARGET_BOARD_KERNEL_HEADERS) \
 		$(TARGET_PRODUCT_KERNEL_HEADERS)
 
@@ -554,6 +562,12 @@ DEX2OAT_TARGET_CPU_VARIANT := $(TARGET_ARCH_VARIANT)
 endif
 else
 DEX2OAT_TARGET_CPU_VARIANT := $(TARGET_CPU_VARIANT)
+<<<<<<< HEAD
+=======
+DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES := default
+ifneq (,$(filter $(DEX2OAT_TARGET_CPU_VARIANT),cortex-a7 cortex-a15 krait denver generic cortex-a53))
+  DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES := div
+>>>>>>> cm-12.0
 endif
 DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES := default
 
@@ -561,6 +575,12 @@ ifdef TARGET_2ND_ARCH
 $(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_ARCH := $(TARGET_2ND_ARCH)
 $(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_CPU_VARIANT := $(TARGET_2ND_CPU_VARIANT)
 $(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES := default
+<<<<<<< HEAD
+=======
+ifneq (,$(filter $($(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_CPU_VARIANT),cortex-a7 cortex-a15 krait denver cortex-a53))
+  $(TARGET_2ND_ARCH_VAR_PREFIX)DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES := div
+endif
+>>>>>>> cm-12.0
 endif
 
 # define clang/llvm tools and global flags
@@ -615,8 +635,27 @@ RS_PREBUILT_CLCORE := prebuilts/sdk/renderscript/lib/$(TARGET_ARCH)/librsrt_$(TA
 RS_PREBUILT_LIBPATH := -L prebuilts/ndk/8/platforms/android-9/arch-$(TARGET_ARCH)/usr/lib
 RS_PREBUILT_COMPILER_RT := prebuilts/sdk/renderscript/lib/$(TARGET_ARCH)/libcompiler_rt.a
 
+<<<<<<< HEAD
 # API Level lists for Renderscript Compat lib.
 RSCOMPAT_32BIT_ONLY_API_LEVELS := 8 9 10 11 12 13 14 15 16 17 18 19 20
 RSCOMPAT_NO_USAGEIO_API_LEVELS := 8 9 10 11 12 13
+=======
+# We might want to skip items listed in PRODUCT_COPY_FILES based on
+# various target flags. This is useful for replacing a binary module with one
+# built from source. This should be a list of destination files under $OUT
+#
+TARGET_COPY_FILES_OVERRIDES := \
+    $(addprefix %:, $(strip $(TARGET_COPY_FILES_OVERRIDES)))
+
+ifneq ($(TARGET_COPY_FILES_OVERRIDES),)
+    PRODUCT_COPY_FILES := $(filter-out $(TARGET_COPY_FILES_OVERRIDES), $(PRODUCT_COPY_FILES))
+endif
+
+ifneq ($(CM_BUILD),)
+## We need to be sure the global selinux policies are included
+## last, to avoid accidental resetting by device configs
+$(eval include vendor/cm/sepolicy/sepolicy.mk)
+endif
+>>>>>>> cm-12.0
 
 include $(BUILD_SYSTEM)/dumpvar.mk
