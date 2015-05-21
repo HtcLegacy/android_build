@@ -140,6 +140,19 @@ else
     endif
 endif
 
+ifeq ($(BOARD_HAS_MTK_HARDWARE),true)
+  ifeq ($(BOARD_USES_MTK_KERNELBUILD),true)
+    include $(CLEAR_VARS)
+    $(shell rm -f $(TARGET_PREBUILT_INT_KERNEL))
+    FULL_KERNEL_BUILD := false
+    PROJECT_NAME := $(TARGET_KERNEL_CONFIG)
+$(TARGET_PREBUILT_INT_KERNEL):
+	cd $(TARGET_KERNEL_SOURCE) && env -i PATH=$(PATH) ./makeMtk -t -o=OUT_DIR=$(OUT_DIR),TARGET_BUILD_VARIANT=$(TARGET_BUILD_VARIANT) $(PROJECT_NAME) r k
+	-cd $(TARGET_KERNEL_SOURCE) && git clean -fd
+
+  endif
+endif
+
 ifeq ($(FULL_KERNEL_BUILD),true)
 
 KERNEL_HEADERS_INSTALL := $(KERNEL_OUT)/usr
@@ -252,7 +265,7 @@ kernelconfig: $(KERNEL_OUT) $(KERNEL_CONFIG)
 		 $(MAKE) -C $(KERNEL_SRC) O=$(KERNEL_OUT) ARCH=$(KERNEL_ARCH) $(KERNEL_CROSS_COMPILE) menuconfig
 	env KCONFIG_NOTIMESTAMP=true \
 		 $(MAKE) -C $(KERNEL_SRC) O=$(KERNEL_OUT) ARCH=$(KERNEL_ARCH) $(KERNEL_CROSS_COMPILE) savedefconfig
-	cp $(KERNEL_OUT)/defconfig kernel/arch/$(KERNEL_ARCH)/configs/$(KERNEL_DEFCONFIG)
+	cp $(KERNEL_OUT)/defconfig $(KERNEL_SRC)/arch/$(KERNEL_ARCH)/configs/$(KERNEL_DEFCONFIG)
 
 endif # FULL_KERNEL_BUILD
 

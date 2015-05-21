@@ -101,6 +101,9 @@ include $(BUILD_SYSTEM)/cleanbuild.mk
 # Bring in Qualcomm helper macros
 include $(BUILD_SYSTEM)/qcom_utils.mk
 
+# Bring in Mediatek helper macros too
+include $(BUILD_SYSTEM)/mtk_utils.mk
+
 # Include the google-specific config
 -include vendor/google/build/config.mk
 
@@ -140,8 +143,8 @@ $(warning ************************************************************)
 $(error Directory names containing spaces not supported)
 endif
 
-java_version_str := $(shell unset _JAVA_OPTIONS && java -version 2>&1)
-javac_version_str := $(shell unset _JAVA_OPTIONS && javac -version 2>&1)
+java_version_str := $(shell unset _JAVA_OPTIONS JAVA_TOOL_OPTIONS && java -version 2>&1)
+javac_version_str := $(shell unset _JAVA_OPTIONS JAVA_TOOL_OPTIONS && javac -version 2>&1)
 
 # Check for the correct version of java, should be 1.7 by
 # default, and 1.6 if LEGACY_USE_JAVA6 is set.
